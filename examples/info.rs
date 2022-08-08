@@ -1,8 +1,6 @@
-use logger_rs::{info, subscriber::fmt::FmtSubscriber};
-use vtable::VBox;
+use logger_rs::{info, subscriber::fmt::FmtSubscriber, LevelFilter};
 
 fn main() {
-    // VBox::new(FmtSubscriber {});
-    logger_rs::init(FmtSubscriber {});
-    info("fewfe");
+    logger_rs::init(FmtSubscriber::new(LevelFilter::Error));
+    info!("Hello, {}", "World");
 }

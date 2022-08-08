@@ -1,7 +1,7 @@
 use lunatic::process::{AbstractProcess, MessageHandler, ProcessRef};
 use serde::{Deserialize, Serialize};
 
-use crate::subscriber::SubscriberInstance;
+use crate::{subscriber::SubscriberInstance, Event};
 
 pub struct LoggingProcess {
     subscriber: SubscriberInstance,
@@ -17,10 +17,12 @@ impl AbstractProcess for LoggingProcess {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct Dispatch(pub String);
+pub struct Dispatch(pub Event);
 
 impl MessageHandler<Dispatch> for LoggingProcess {
     fn handle(state: &mut Self::State, message: Dispatch) {
-        state.subscriber.event(&message.0);
+        if state.subscriber.enabled(message.0.metadata()) {
+            state.subscriber.event(message.0);
+        }
     }
 }
