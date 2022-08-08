@@ -32,7 +32,7 @@ macro_rules! log {
 /// # Examples
 ///
 /// ```
-/// use logger_rs::error;
+/// use lunatic_log::error;
 ///
 /// # fn main() {
 /// let (err_info, port) = ("No connection", 22);
@@ -56,7 +56,7 @@ macro_rules! error {
 /// # Examples
 ///
 /// ```
-/// use logger_rs::warn;
+/// use lunatic_log::warn;
 ///
 /// # fn main() {
 /// let warn_description = "Invalid Input";
@@ -80,7 +80,7 @@ macro_rules! warn {
 /// # Examples
 ///
 /// ```
-/// use logger_rs::info;
+/// use lunatic_log::info;
 ///
 /// # fn main() {
 /// # struct Connection { port: u32, speed: f32 }
@@ -106,7 +106,7 @@ macro_rules! info {
 /// # Examples
 ///
 /// ```
-/// use logger_rs::debug;
+/// use lunatic_log::debug;
 ///
 /// # fn main() {
 /// # struct Position { x: f32, y: f32 }
@@ -131,7 +131,7 @@ macro_rules! debug {
 /// # Examples
 ///
 /// ```
-/// use logger_rs::trace;
+/// use lunatic_log::trace;
 ///
 /// # fn main() {
 /// # struct Position { x: f32, y: f32 }

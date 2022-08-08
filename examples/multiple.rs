@@ -1,4 +1,4 @@
-use logger_rs::{
+use lunatic_log::{
     info,
     subscriber::{fmt::FmtSubscriber, multiple::MultipleSubscribers},
     LevelFilter,
@@ -11,7 +11,7 @@ fn main() {
         .add_subscriber(FmtSubscriber::new(LevelFilter::Info));
 
     // Initialize multiple subscribers
-    logger_rs::init(subscriber);
+    lunatic_log::init(subscriber);
 
     // Log message
     info!("Hello, {}", "World");

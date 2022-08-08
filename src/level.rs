@@ -185,7 +185,7 @@ impl Level {
     /// # Examples
     ///
     /// ```
-    /// use logger_rs::Level;
+    /// use lunatic_log::Level;
     ///
     /// let mut levels = Level::iter();
     ///
@@ -343,7 +343,7 @@ impl LevelFilter {
     /// # Examples
     ///
     /// ```
-    /// use logger_rs::LevelFilter;
+    /// use lunatic_log::LevelFilter;
     ///
     /// let mut levels = LevelFilter::iter();
     ///

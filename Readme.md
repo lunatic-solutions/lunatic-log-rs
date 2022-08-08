@@ -1,74 +1,44 @@
 A logging library for lunatic Rust applications.
 
-## Problem
+## Why a new logging library?
 
 Current logging solutions in Rust (log, tracing, ...) depend on global static variables that are
-initialized at the start of the app. E.g.
+initialized at the start of the app. This doesn't work in lunatic, where each process gets their
+own memory space. You would need to re-initialize the logger for each process, and that is not
+practical.
 
-```rust
-// tracing
-tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
-// env_logger
-Builder::new()
-        .parse(&env::var("MY_APP_LOG").unwrap_or_default())
-        .init();
-// ...
+`lunatic-log` allows you to run a log subscriber process that collects logging messages from all
+running processes.
+
+## How to use `lunatic-log`?
+
+Add it as a dependency:
+```toml
+lunatic-log = "0.1"
 ```
 
-This doesn't work in lunatic, where each process gets their own memory space. You would need to
-re-initialize the logger for each process, and that is not practical.
-
-## Solution
-
-Have a "logger" process registered under a well-defined (e.g. lunatic::logger`) name and for every:
+In your code:
 
 ```rust
-log::info!("informational message");
-log::warn!("warning message");
-log::error!("this is an error {}", "message");
+use logger_rs::{info, subscriber::fmt::FmtSubscriber, LevelFilter};
+
+fn main() {
+    // Initialize subscriber
+    logger_rs::init(FmtSubscriber::new(LevelFilter::Info));
+
+    // Log message
+    info!("Hello, {}", "World");
+
+    // Wait for events to propagate and display before exiting app
+    lunatic::sleep(std::time::Duration::from_millis(50));
+}
 ```
 
-look up the name and send a message to it.
+## License
 
-## Implementation suggestions
+Licensed under either of
 
-### 1. Swapable subscriber
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
-The well known process should just define a message interface. This means that we can provide a
-simple implementation that writes to standard out:
-
-```rust
-logger:init();
-```
-
-But the community could also provide their own implementations too:
-
-```rust
-open_telemetry_logger:init();
-```
-
-### 2. Tracing
-
-We could support in-process tracing similar to: https://crates.io/crates/tracing. Depending on the
-lifetime of the span.
-
-### 3. Supervision
-
-The subscriber should be an `AbstractProcess` so that it can be plugged into a supervisor?
-
-### 4. Lookup optimization
-
-Having one subscriber for all processes could become a bottleneck. Looking it up could consist of
-two parts:
-
-1. Look up a well-known name (e.g. `lunatic::logger`)
-2. Ask it for a subscriber
-
-That way the well known process could maintain a pool of subscribers that is handed out to others.
-
-Once it's looked up, we could save the subscriber process in a process local variable so that we
-don't need to look it up each time we do:
-```rust
-log::info!("informational message");
-```
+at your option.
