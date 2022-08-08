@@ -1,10 +1,10 @@
 [package]
 name = "lunatic-log"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A logging library for lunatic Rust applications"
 repository = "https://github.com/lunatic-solutions/logger-rs"
-categories = ["wasm", "logger", "log"]
+categories = ["wasm", "development-tools::debugging"]
 license = "Apache-2.0/MIT"
 readme = "Readme.md"
 
