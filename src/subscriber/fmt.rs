@@ -1,17 +1,14 @@
-use lunatic::process::{AbstractProcess, ProcessRef};
 use serde::{Deserialize, Serialize};
-use tracing::metadata::LevelFilter;
-
-use crate::SubscriberVTable_static;
 
 use super::Subscriber;
 
+#[derive(Serialize, Deserialize)]
 pub struct FmtSubscriber {
     // level_filter: LevelFilter,
 }
 
 impl Subscriber for FmtSubscriber {
-    fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
+    fn enabled(&self, _metadata: &tracing::Metadata<'_>) -> bool {
         true
     }
 
@@ -19,8 +16,6 @@ impl Subscriber for FmtSubscriber {
         println!("{event}");
     }
 }
-
-SubscriberVTable_static!(static FMT_SUBSCRIBER_VT for FmtSubscriber);
 
 // impl AbstractProcess for FmtSubscriber {
 //     type Arg = LevelFilterWrapper;
