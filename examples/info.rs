@@ -2,7 +2,7 @@ use logger_rs::{info, subscriber::fmt::FmtSubscriber, LevelFilter};
 
 fn main() {
     // Initialize subscriber
-    logger_rs::init(FmtSubscriber::new(LevelFilter::Warn));
+    logger_rs::init(FmtSubscriber::new(LevelFilter::Info));
 
     // Log message
     info!("Hello, {}", "World");
