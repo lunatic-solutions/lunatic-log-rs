@@ -55,6 +55,10 @@ pub struct Metadata {
     /// The name of the span described by this metadata.
     name: String,
 
+    /// The part of the system that the span that this metadata describes
+    /// occurred in.
+    target: String,
+
     /// The level of verbosity of the described span.
     level: Level,
 
@@ -76,6 +80,7 @@ impl Metadata {
     /// names, and optional source code location.
     pub const fn new(
         name: String,
+        target: String,
         level: Level,
         module_path: Option<String>,
         file: Option<String>,
@@ -83,6 +88,7 @@ impl Metadata {
     ) -> Self {
         Metadata {
             name,
+            target,
             level,
             module_path,
             file,
@@ -98,6 +104,15 @@ impl Metadata {
     /// Returns the name of the span.
     pub fn name(&self) -> &String {
         &self.name
+    }
+
+    /// Returns a string describing the part of the system where the span or
+    /// event that this metadata describes occurred.
+    ///
+    /// Typically, this is the module path, but alternate targets may be set
+    /// when spans or events are constructed.
+    pub fn target(&self) -> &String {
+        &self.target
     }
 
     /// Returns the path to the Rust module where the span occurred, or

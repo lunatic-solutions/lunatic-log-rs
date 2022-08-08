@@ -109,13 +109,6 @@ impl Ord for Level {
     }
 }
 
-fn ok_or<T, E>(t: Option<T>, e: E) -> Result<T, E> {
-    match t {
-        Some(t) => Ok(t),
-        None => Err(e),
-    }
-}
-
 // Reimplemented here because std::ascii is not available in libcore
 fn eq_ignore_ascii_case(a: &str, b: &str) -> bool {
     fn to_ascii_uppercase(c: u8) -> u8 {
@@ -138,16 +131,14 @@ fn eq_ignore_ascii_case(a: &str, b: &str) -> bool {
 impl FromStr for Level {
     type Err = ParseLevelError;
     fn from_str(level: &str) -> Result<Level, Self::Err> {
-        ok_or(
-            LOG_LEVEL_NAMES
-                .iter()
-                .position(|&name| eq_ignore_ascii_case(name, level))
-                .into_iter()
-                .filter(|&idx| idx != 0)
-                .map(|idx| Level::from_usize(idx).unwrap())
-                .next(),
-            ParseLevelError(()),
-        )
+        LOG_LEVEL_NAMES
+            .iter()
+            .position(|&name| eq_ignore_ascii_case(name, level))
+            .into_iter()
+            .filter(|&idx| idx != 0)
+            .map(|idx| Level::from_usize(idx).unwrap())
+            .next()
+            .ok_or(ParseLevelError(()))
     }
 }
 
@@ -303,13 +294,11 @@ impl Ord for LevelFilter {
 impl FromStr for LevelFilter {
     type Err = ParseLevelError;
     fn from_str(level: &str) -> Result<LevelFilter, Self::Err> {
-        ok_or(
-            LOG_LEVEL_NAMES
-                .iter()
-                .position(|&name| eq_ignore_ascii_case(name, level))
-                .map(|p| LevelFilter::from_usize(p).unwrap()),
-            ParseLevelError(()),
-        )
+        LOG_LEVEL_NAMES
+            .iter()
+            .position(|&name| eq_ignore_ascii_case(name, level))
+            .map(|p| LevelFilter::from_usize(p).unwrap())
+            .ok_or(ParseLevelError(()))
     }
 }
 

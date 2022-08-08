@@ -1,7 +1,10 @@
-use crate::{level::LevelFilter, metadata::Metadata, Event, SubscriberVTable_static};
+use serde::{Deserialize, Serialize};
+
+use crate::{level::LevelFilter, Event, Metadata};
 
 use super::Subscriber;
 
+#[derive(Serialize, Deserialize)]
 pub struct FmtSubscriber {
     level_filter: LevelFilter,
 }
@@ -17,9 +20,7 @@ impl Subscriber for FmtSubscriber {
         metadata.level() <= &self.level_filter
     }
 
-    fn event(&self, event: Event) {
+    fn event(&self, event: &Event) {
         println!("{}", event.message());
     }
 }
-
-SubscriberVTable_static!(static FMT_SUBSCRIBER_VT for FmtSubscriber);

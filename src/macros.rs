@@ -1,14 +1,8 @@
 #[macro_export]
 macro_rules! log {
-    // log!(target: "my_target", Level::Info; key1 = 42, key2 = true; "a {} event", "log");
-    (target: $target:expr, $lvl:expr, $($key:tt = $value:expr),+; $($arg:tt)+) => ({
-        todo!()
-    });
-
     // log!(target: "my_target", Level::Info; "a {} event", "log");
     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
         use lunatic::process::Message;
-        let lvl = $lvl;
         let metadata = $crate::Metadata::new(
             concat!(
                 "event ",
@@ -16,7 +10,8 @@ macro_rules! log {
                 ":",
                 line!()
             ).to_string(),
-            lvl,
+            $target.into(),
+            $lvl,
             Some(module_path!().to_string()),
             Some(file!().to_string()),
             Some(line!()),
@@ -24,12 +19,12 @@ macro_rules! log {
         let message = format!($($arg)+);
         let event = $crate::Event::new(message, metadata);
         if let Some(proc) = $crate::__lookup_logging_process() {
-            proc.send($crate::process::Dispatch(event))
+            proc.send(event)
         }
     });
 
     // log!(Level::Info, "a log event")
-    ($lvl:expr, $($arg:tt)+) => ($crate::log!(target: module_path!(), $lvl, $($arg)+));
+    ($lvl:expr, $($arg:tt)+) => ($crate::log!(target: module_path!().to_string(), $lvl, $($arg)+));
 }
 
 /// Logs a message at the error level.
