@@ -59,8 +59,6 @@ impl Event {
     }
 
     /// Returns [metadata] describing this `Event`.
-    ///
-    /// [metadata]: super::Metadata
     pub fn metadata(&self) -> &Metadata {
         &self.metadata
     }

@@ -31,8 +31,8 @@ macro_rules! log {
 ///
 /// # Examples
 ///
-/// ```edition2018
-/// use log::error;
+/// ```
+/// use logger_rs::error;
 ///
 /// # fn main() {
 /// let (err_info, port) = ("No connection", 22);
@@ -55,8 +55,8 @@ macro_rules! error {
 ///
 /// # Examples
 ///
-/// ```edition2018
-/// use log::warn;
+/// ```
+/// use logger_rs::warn;
 ///
 /// # fn main() {
 /// let warn_description = "Invalid Input";
@@ -79,8 +79,8 @@ macro_rules! warn {
 ///
 /// # Examples
 ///
-/// ```edition2018
-/// use log::info;
+/// ```
+/// use logger_rs::info;
 ///
 /// # fn main() {
 /// # struct Connection { port: u32, speed: f32 }
@@ -105,8 +105,8 @@ macro_rules! info {
 ///
 /// # Examples
 ///
-/// ```edition2018
-/// use log::debug;
+/// ```
+/// use logger_rs::debug;
 ///
 /// # fn main() {
 /// # struct Position { x: f32, y: f32 }
@@ -130,8 +130,8 @@ macro_rules! debug {
 ///
 /// # Examples
 ///
-/// ```edition2018
-/// use log::trace;
+/// ```
+/// use logger_rs::trace;
 ///
 /// # fn main() {
 /// # struct Position { x: f32, y: f32 }

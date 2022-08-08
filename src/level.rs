@@ -10,16 +10,15 @@ static LEVEL_PARSE_ERROR: &str =
 /// An enum representing the available verbosity levels of the logger.
 ///
 /// Typical usage includes: checking if a certain `Level` is enabled with
-/// [`log_enabled!`](macro.log_enabled.html), specifying the `Level` of
-/// [`log!`](macro.log.html), and comparing a `Level` directly to a
-/// [`LevelFilter`](enum.LevelFilter.html).
+/// [`log!`](super::log), and comparing a [`Level`] directly to a
+/// [`LevelFilter`](LevelFilter).
 #[repr(usize)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum Level {
     /// The "error" level.
     ///
     /// Designates very serious errors.
-    // This way these line up with the discriminants for LevelFilter below
+    // This way these line up with the discriminants for [LevelFilter] below
     // This works because Rust treats field-less enums the same way as C does:
     // https://doc.rust-lang.org/reference/items/enumerations.html#custom-discriminant-values-for-field-less-enumerations
     Error = 1,
@@ -166,15 +165,15 @@ impl Level {
         Level::Trace
     }
 
-    /// Converts the `Level` to the equivalent `LevelFilter`.
+    /// Converts the [`Level`] to the equivalent [`LevelFilter`].
     #[inline]
     pub fn to_level_filter(&self) -> LevelFilter {
         LevelFilter::from_usize(*self as usize).unwrap()
     }
 
-    /// Returns the string representation of the `Level`.
+    /// Returns the string representation of the [`Level`].
     ///
-    /// This returns the same string as the `fmt::Display` implementation.
+    /// This returns the same string as the [`fmt::Display`] implementation.
     pub fn as_str(&self) -> &'static str {
         LOG_LEVEL_NAMES[*self as usize]
     }
@@ -186,7 +185,7 @@ impl Level {
     /// # Examples
     ///
     /// ```
-    /// use log::Level;
+    /// use logger_rs::Level;
     ///
     /// let mut levels = Level::iter();
     ///
@@ -200,12 +199,7 @@ impl Level {
 
 /// An enum representing the available verbosity level filters of the logger.
 ///
-/// A `LevelFilter` may be compared directly to a [`Level`]. Use this type
-/// to get and set the maximum log level with [`max_level()`] and [`set_max_level`].
-///
-/// [`Level`]: enum.Level.html
-/// [`max_level()`]: fn.max_level.html
-/// [`set_max_level`]: fn.set_max_level.html
+/// A [`LevelFilter`] may be compared directly to a [`Level`].
 #[repr(usize)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
 pub enum LevelFilter {
@@ -327,17 +321,17 @@ impl LevelFilter {
         LevelFilter::Trace
     }
 
-    /// Converts `self` to the equivalent `Level`.
+    /// Converts `self` to the equivalent [`Level`].
     ///
-    /// Returns `None` if `self` is `LevelFilter::Off`.
+    /// Returns [`None`] if `self` is [`LevelFilter::Off`].
     #[inline]
     pub fn to_level(&self) -> Option<Level> {
         Level::from_usize(*self as usize)
     }
 
-    /// Returns the string representation of the `LevelFilter`.
+    /// Returns the string representation of the [`LevelFilter`].
     ///
-    /// This returns the same string as the `fmt::Display` implementation.
+    /// This returns the same string as the [`fmt::Display`] implementation.
     pub fn as_str(&self) -> &'static str {
         LOG_LEVEL_NAMES[*self as usize]
     }
@@ -349,7 +343,7 @@ impl LevelFilter {
     /// # Examples
     ///
     /// ```
-    /// use log::LevelFilter;
+    /// use logger_rs::LevelFilter;
     ///
     /// let mut levels = LevelFilter::iter();
     ///
