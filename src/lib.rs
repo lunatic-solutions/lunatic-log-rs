@@ -17,7 +17,21 @@ process_local! {
     static LOGGING_PROCESS: RefCell<Option<Process<Event>>> = RefCell::new(None);
 }
 
-/// Initialize a subscriber to log events.
+/// Initialize a subscriber to handle log events.
+///
+/// The subscriber is spawned in a [`lunatic::Process`] and receives log events.
+///
+/// # Example
+///
+/// ```
+/// use lunatic_log::{info, subscriber::fmt::FmtSubscriber};
+///
+/// // Initialize subscriber
+/// init(FmtSubscriber::new(LevelFilter::Info));
+///
+/// // Log info message
+/// info!("Hello, {}", "world");
+/// ```
 pub fn init(subscriber: impl Subscriber) -> Process<Event> {
     if Process::<Event>::lookup("lunatic::logger").is_some() {
         panic!("logger already initialized");

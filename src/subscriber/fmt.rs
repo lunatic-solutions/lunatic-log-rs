@@ -1,3 +1,7 @@
+//! Subscriber that prints to stdout/stderr.
+//!
+//! Supports pretty printing with colors.
+
 use std::fmt::Write;
 
 use ansi_term::Color;
@@ -10,6 +14,19 @@ use super::Subscriber;
 
 const GRAY: Color = Color::Black;
 
+/// A subscriber printing to stdout/stderr.
+///
+/// # Basic example
+///
+/// ```
+/// lunatic_log::init(FmtSubscriber::new(LevelFilter::Info));
+/// ```
+///
+/// # Pretty example
+///
+/// ```
+/// lunatic_log::init(FmtSubscriber::new(LevelFilter::Info).pretty());
+/// ```
 #[derive(Serialize, Deserialize)]
 pub struct FmtSubscriber {
     color: bool,
@@ -38,6 +55,7 @@ impl Default for FmtSubscriber {
 }
 
 impl FmtSubscriber {
+    /// Creates an instance of [`FmtSubscriber`].
     pub fn new(level_filter: LevelFilter) -> Self {
         FmtSubscriber {
             level_filter,
@@ -45,6 +63,7 @@ impl FmtSubscriber {
         }
     }
 
+    /// Configures logging to be pretty with colors, filenames, and more.
     pub fn pretty(mut self) -> Self {
         self.color = true;
         self.file = true;
@@ -55,36 +74,45 @@ impl FmtSubscriber {
         self
     }
 
+    /// Enables printing color.
     pub fn with_color(mut self, color: bool) -> Self {
         self.color = color;
         self
     }
 
+    /// Print filename where log originated.
     pub fn with_file(mut self, file: bool) -> Self {
         self.file = file;
         self
     }
 
+    /// Print the log level.
     pub fn with_level(mut self, level: bool) -> Self {
         self.level = level;
         self
     }
 
+    /// Print the line number where log originated.
     pub fn with_line_number(mut self, line_number: bool) -> Self {
         self.line_number = line_number;
         self
     }
 
+    /// Print the target of the log.
     pub fn with_target(mut self, target: bool) -> Self {
         self.target = target;
         self
     }
 
+    /// Print the time with the log.
     pub fn with_time(mut self, time: bool) -> Self {
         self.time = time;
         self
     }
 
+    /// Customize the time format.
+    ///
+    /// This must be in the `strftime` format supported by [chrono](https://docs.rs/chrono/latest/chrono/format/strftime/index.html).
     pub fn with_time_format(mut self, time_format: impl Into<String>) -> Self {
         self.time_format = Some(time_format.into());
         self
@@ -167,6 +195,10 @@ impl Subscriber for FmtSubscriber {
         } else {
             line.push(' ');
         }
-        println!("{line}{}", event.message());
+        if event.metadata().level() == &Level::Error {
+            eprintln!("{line}{}", event.message());
+        } else {
+            println!("{line}{}", event.message());
+        }
     }
 }
