@@ -13,6 +13,7 @@ running processes.
 ## How to use `lunatic-log`?
 
 Add it as a dependency:
+
 ```toml
 lunatic-log = "0.1"
 ```
@@ -20,11 +21,11 @@ lunatic-log = "0.1"
 In your code:
 
 ```rust
-use logger_rs::{info, subscriber::fmt::FmtSubscriber, LevelFilter};
+use lunatic_log::{info, subscriber::fmt::FmtSubscriber, LevelFilter};
 
 fn main() {
     // Initialize subscriber
-    logger_rs::init(FmtSubscriber::new(LevelFilter::Info));
+    lunatic_log::init(FmtSubscriber::new(LevelFilter::Info));
 
     // Log message
     info!("Hello, {}", "World");

@@ -10,5 +10,7 @@ readme = "Readme.md"
 
 
 [dependencies]
+ansi_term = "0.12"
+chrono = "0.4"
 lunatic = "^0.10"
 serde = { version = "1.0", features = ["derive"] }
