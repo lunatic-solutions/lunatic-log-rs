@@ -1,6 +1,6 @@
 [package]
 name = "lunatic-log"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 description = "A logging library for lunatic Rust applications"
 repository = "https://github.com/lunatic-solutions/logger-rs"
