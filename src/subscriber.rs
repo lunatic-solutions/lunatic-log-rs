@@ -1,3 +1,8 @@
+//! A [`Subscriber`] handles log events.
+//!
+//! It can be used to print to stdout with [`FmtSubscriber`](fmt::FmtSubscriber),
+//! but is also capable of handling logs in other ways.
+
 pub mod fmt;
 pub mod multiple;
 

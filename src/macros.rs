@@ -1,3 +1,6 @@
+/// Logs a message with a specified level.
+///
+/// You should use [`error`], [`warn`], [`info`], [`debug`], [`trace`] macros instead.
 #[macro_export]
 macro_rules! log {
     // log!(target: "my_target", Level::Info; "a {} event", "log");

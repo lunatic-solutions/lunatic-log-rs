@@ -1,3 +1,22 @@
+//! A logging library for lunatic Rust applications.
+//!
+//! A [`Subscriber`] is initialized in a [`lunatic::Process`] with [`init`].
+//! Logs are emitted to the subscriber when the [`error`], [`warn`], [`info`], [`debug`], [`trace`] macros are used.
+//!
+//! # Example
+//!
+//! ```
+//! use lunatic_log::{info, subscriber::fmt::FmtSubscriber};
+//!
+//! // Initialize subscriber
+//! init(FmtSubscriber::new(LevelFilter::Info).pretty());
+//!
+//! // Log info message
+//! info!("Hello, {}", "world");
+//! ```
+
+#![deny(missing_docs)]
+
 mod level;
 #[macro_use]
 mod macros;
@@ -20,18 +39,6 @@ process_local! {
 /// Initialize a subscriber to handle log events.
 ///
 /// The subscriber is spawned in a [`lunatic::Process`] and receives log events.
-///
-/// # Example
-///
-/// ```
-/// use lunatic_log::{info, subscriber::fmt::FmtSubscriber};
-///
-/// // Initialize subscriber
-/// init(FmtSubscriber::new(LevelFilter::Info));
-///
-/// // Log info message
-/// info!("Hello, {}", "world");
-/// ```
 pub fn init(subscriber: impl Subscriber) -> Process<Event> {
     if Process::<Event>::lookup("lunatic::logger").is_some() {
         panic!("logger already initialized");
