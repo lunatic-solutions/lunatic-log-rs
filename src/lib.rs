@@ -33,7 +33,13 @@ pub use crate::level::*;
 pub use crate::metadata::*;
 
 process_local! {
-    static LOGGING_PROCESS: RefCell<Option<Process<Event>>> = RefCell::new(None);
+    static LOGGING_PROCESS: RefCell<LoggingProcess> = RefCell::new(LoggingProcess::NotLookedUp);
+}
+
+enum LoggingProcess {
+    NotLookedUp,
+    NotPresent,
+    Present(Process<Event>),
 }
 
 /// Initialize a subscriber to handle log events.
@@ -46,6 +52,7 @@ pub fn init(subscriber: impl Subscriber) -> Process<Event> {
 
     let process = spawn_subscriber(subscriber);
     process.register("lunatic::logger");
+    LOGGING_PROCESS.with_borrow_mut(|mut proc| *proc = LoggingProcess::Present(process.clone()));
     process
 }
 
@@ -88,14 +95,18 @@ impl Event {
 // This is an internal function, and it's API is subject to change at any time.
 #[doc(hidden)]
 pub fn __lookup_logging_process() -> Option<Process<Event>> {
-    LOGGING_PROCESS.with(|proc| {
-        if proc.borrow().is_none() {
-            return Process::<Event>::lookup("lunatic::logger").map(|process| {
-                *proc.borrow_mut() = Some(process.clone());
-                process
-            });
-        }
-
-        proc.borrow().clone()
+    LOGGING_PROCESS.with(|proc| match &*proc.borrow() {
+        LoggingProcess::NotLookedUp => match Process::<Event>::lookup("lunatic::logger") {
+            Some(process) => {
+                *proc.borrow_mut() = LoggingProcess::Present(process.clone());
+                Some(process)
+            }
+            None => {
+                *proc.borrow_mut() = LoggingProcess::NotPresent;
+                None
+            }
+        },
+        LoggingProcess::NotPresent => None,
+        LoggingProcess::Present(process) => Some(process.clone()),
     })
 }
