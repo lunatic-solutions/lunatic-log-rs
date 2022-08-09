@@ -126,7 +126,16 @@ impl Subscriber for FmtSubscriber {
 
     fn event(&self, event: &Event) {
         let mut line = String::new();
+        macro_rules! insert_space {
+            () => {
+                if !line.is_empty() {
+                    line.push(' ');
+                }
+            };
+        }
+
         if self.time {
+            insert_space!();
             let now = Utc::now();
             let now_string = now
                 .format(
@@ -136,12 +145,14 @@ impl Subscriber for FmtSubscriber {
                 )
                 .to_string();
             if self.color {
-                write!(line, "{} ", GRAY.paint(now_string)).unwrap();
+                write!(line, "{}", GRAY.paint(now_string)).unwrap();
             } else {
-                write!(line, "{now_string} ").unwrap();
+                write!(line, "{now_string}").unwrap();
             }
         }
+
         if self.level {
+            insert_space!();
             if self.color {
                 let level_string = match event.metadata().level() {
                     Level::Error => Color::Red,
@@ -152,31 +163,35 @@ impl Subscriber for FmtSubscriber {
                 }
                 .paint(event.metadata().level().as_str());
                 for _ in 0..(5 - event.metadata().level().as_str().len()) {
-                    line.push(' ');
+                    insert_space!();
                 }
-                write!(line, "{level_string} ").unwrap();
+                write!(line, "{level_string}").unwrap();
             } else {
                 let level_string = event.metadata().level().as_str();
                 for _ in 0..(5 - event.metadata().level().as_str().len()) {
-                    line.push(' ');
+                    insert_space!();
                 }
-                write!(line, "{level_string} ").unwrap();
+                write!(line, "{level_string}").unwrap();
             };
         }
+
         if self.target {
+            insert_space!();
             if self.color {
                 write!(
                     line,
                     "{}",
-                    GRAY.paint(format!("{}: ", event.metadata().target()))
+                    GRAY.paint(format!("{}:", event.metadata().target()))
                 )
                 .unwrap();
             } else {
-                write!(line, "{}: ", event.metadata().target()).unwrap();
+                write!(line, "{}:", event.metadata().target()).unwrap();
             }
         }
+
         if self.file {
             if let Some(file) = event.metadata().file() {
+                insert_space!();
                 if self.color {
                     write!(line, "{}", GRAY.paint(format!("{file}:"))).unwrap();
                 } else {
@@ -184,17 +199,22 @@ impl Subscriber for FmtSubscriber {
                 }
             }
         }
+
         if self.line_number {
             if let Some(line_number) = event.metadata().line() {
+                if self.file && event.metadata().file().is_some() {
+                    insert_space!();
+                }
                 if self.color {
-                    write!(line, "{}", GRAY.paint(format!("{line_number}: "))).unwrap();
+                    write!(line, "{}", GRAY.paint(format!("{line_number}:"))).unwrap();
                 } else {
-                    write!(line, "{}: ", line_number).unwrap();
+                    write!(line, "{}:", line_number).unwrap();
                 }
             }
-        } else {
-            line.push(' ');
         }
+
+        insert_space!();
+
         if event.metadata().level() == &Level::Error {
             eprintln!("{line}{}", event.message());
         } else {
