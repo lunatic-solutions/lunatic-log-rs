@@ -95,18 +95,24 @@ impl Event {
 // This is an internal function, and it's API is subject to change at any time.
 #[doc(hidden)]
 pub fn __lookup_logging_process() -> Option<Process<Event>> {
-    LOGGING_PROCESS.with(|proc| match &*proc.borrow() {
-        LoggingProcess::NotLookedUp => match Process::<Event>::lookup("lunatic::logger") {
-            Some(process) => {
-                *proc.borrow_mut() = LoggingProcess::Present(process.clone());
-                Some(process)
+    LOGGING_PROCESS.with(|proc| {
+        let proc_ref = proc.borrow();
+        match &*proc_ref {
+            LoggingProcess::NotLookedUp => {
+                std::mem::drop(proc_ref);
+                match Process::<Event>::lookup("lunatic::logger") {
+                    Some(process) => {
+                        *proc.borrow_mut() = LoggingProcess::Present(process.clone());
+                        Some(process)
+                    }
+                    None => {
+                        *proc.borrow_mut() = LoggingProcess::NotPresent;
+                        None
+                    }
+                }
             }
-            None => {
-                *proc.borrow_mut() = LoggingProcess::NotPresent;
-                None
-            }
-        },
-        LoggingProcess::NotPresent => None,
-        LoggingProcess::Present(process) => Some(process.clone()),
+            LoggingProcess::NotPresent => None,
+            LoggingProcess::Present(process) => Some(process.clone()),
+        }
     })
 }
