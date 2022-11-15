@@ -1,6 +1,6 @@
 [package]
 name = "lunatic-log"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 description = "A logging library for lunatic Rust applications"
 repository = "https://github.com/lunatic-solutions/logger-rs"
@@ -11,7 +11,7 @@ readme = "Readme.md"
 [dependencies]
 ansi_term = "0.12"
 chrono = "0.4"
-lunatic = "0.11"
+lunatic = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.docs.rs]
