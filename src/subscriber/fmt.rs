@@ -4,9 +4,9 @@
 
 use std::fmt::Write;
 
-use ansi_term::Color;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use yansi::Color;
 
 use crate::{level::LevelFilter, Event, Level, Metadata};
 
@@ -159,7 +159,7 @@ impl Subscriber for FmtSubscriber {
                     Level::Warn => Color::Yellow,
                     Level::Info => Color::Green,
                     Level::Debug => Color::Blue,
-                    Level::Trace => Color::Purple,
+                    Level::Trace => Color::Magenta,
                 }
                 .paint(event.metadata().level().as_str());
                 for _ in 0..(5 - event.metadata().level().as_str().len()) {
