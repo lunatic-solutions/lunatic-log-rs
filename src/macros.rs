@@ -5,7 +5,6 @@
 macro_rules! log {
     // log!(target: "my_target", Level::Info; "a {} event", "log");
     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
-        use lunatic::process::Message;
         if let Some(proc) = $crate::__lookup_logging_process() {
             let metadata = $crate::Metadata::new(
                 concat!(
