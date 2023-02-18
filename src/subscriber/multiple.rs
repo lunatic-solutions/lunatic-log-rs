@@ -35,7 +35,6 @@ impl Subscriber for MultipleSubscribers {
     }
 
     fn event(&self, event: &Event) {
-        println!("we got an event");
         for subscriber in &self.subscribers {
             subscriber.send(event.clone());
         }
