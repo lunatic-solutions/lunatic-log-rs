@@ -255,7 +255,7 @@ type Dispatchers = Vec<Dispatch>;
 const REGISTRY_PROCESS_NAME: &str = "__lunatic-tracing-core-registry";
 
 cached_process! {
-    static REGISTRY_PROCESS: ProcessRefCached<Registry> = REGISTRY_PROCESS_NAME;
+    static REGISTRY_PROCESS: ProcessRef<Registry> = REGISTRY_PROCESS_NAME;
 }
 
 struct Registry {

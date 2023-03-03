@@ -159,7 +159,7 @@ pub type DispatchProcess = Process<DispatchMessage, serializer::Json>;
 
 #[derive(Debug)]
 pub struct GlobalDispatchProcess {
-    global: ProcessCached<DispatchMessage, serializer::Json>,
+    global: ProcessCached<'static, DispatchMessage, serializer::Json>,
     scoped: RefCell<Option<DispatchProcess>>,
 }
 
