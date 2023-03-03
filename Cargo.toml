@@ -9,10 +9,15 @@ license = "Apache-2.0/MIT"
 readme = "Readme.md"
 
 [dependencies]
-chrono = "0.4"
-lunatic = "0.12"
+lunatic-tracing-core = { path = "./lunatic-tracing-core" }
+
+cfg-if = "1.0.0"
+lunatic = { version = "0.12", features = ["json_serializer"] }
 serde = { version = "1.0", features = ["derive"] }
-yansi = "0.5.1"
+serde_json = "1.0"
 
 [package.metadata.docs.rs]
 targets = ["wasm32-wasi"]
+
+[workspace]
+members = ["lunatic-tracing-core"]
