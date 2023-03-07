@@ -631,7 +631,7 @@ macro_rules! event {
     //         target: $target,
     //         parent: $parent,
     //         $lvl,
-    //         { message = format_args!($($arg)+), $($fields)* }
+    //         { $($arg)+, $($fields)* }
     //     )
     // );
     // (target: $target:expr, parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
@@ -652,7 +652,7 @@ macro_rules! event {
         $crate::event!(
             target: $target,
             $lvl,
-            { message = format_args!($($arg)+), $($fields)* }
+            { $($arg)+, $($fields)* }
         )
     );
     (target: $target:expr, $lvl:expr, $($k:ident).+ = $($fields:tt)* ) => (
@@ -666,7 +666,7 @@ macro_rules! event {
     //         target: module_path!(),
     //         parent: $parent,
     //         $lvl,
-    //         { message = format_args!($($arg)+), $($fields)* }
+    //         { $($arg)+, $($fields)* }
     //     )
     // );
     // (parent: $parent:expr, $lvl:expr, $($k:ident).+ = $($field:tt)*) => (
@@ -724,7 +724,7 @@ macro_rules! event {
         $crate::event!(
             target: module_path!(),
             $lvl,
-            { message = format_args!($($arg)+), $($fields)* }
+            { $($arg)+, $($fields)* }
         )
     );
     ($lvl:expr, $($k:ident).+ = $($field:tt)*) => (
