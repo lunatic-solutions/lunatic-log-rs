@@ -8,7 +8,8 @@ use crate::{
 };
 
 use super::{
-    init_subscriber, Subscriber, SubscriberAlreadyExistsError, SubscriberMessage, SubscriberProcess,
+    init_subscriber, spawn_subscriber_fn, Subscriber, SubscriberAlreadyExistsError,
+    SubscriberMessage, SubscriberProcess,
 };
 
 /// Combines multiple subscribers into a single subscriber.
@@ -26,8 +27,22 @@ impl MultipleSubscribers {
     }
 
     /// Adds a child subscriber which runs in its own process.
-    pub fn add_subscriber(mut self, subscriber: impl Subscriber) -> Self {
+    pub fn add_subscriber<S>(mut self, subscriber: S) -> Self
+    where
+        S: Subscriber + Serialize + for<'de> Deserialize<'de>,
+    {
         let process = spawn_subscriber(subscriber);
+        self.subscribers.push(process);
+        self
+    }
+
+    /// Adds a child subscriber which runs in its own process.
+    /// This is useful if a subscriber is not serializable.
+    pub fn add_subscriber_fn<S>(mut self, subscriber: fn() -> S) -> Self
+    where
+        S: Subscriber,
+    {
+        let process = spawn_subscriber_fn(subscriber);
         self.subscribers.push(process);
         self
     }

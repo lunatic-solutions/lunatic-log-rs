@@ -9,7 +9,7 @@ pub mod multiple;
 
 use std::error;
 
-use lunatic::{serializer, spawn, Process};
+use lunatic::{function::FuncRef, serializer, spawn, Process};
 use lunatic_cached_process::{cached_process, CachedLookup};
 use lunatic_message_request::MessageRequest;
 use serde::{Deserialize, Serialize};
@@ -89,7 +89,7 @@ impl Event {
 ///     }
 /// }
 /// ```
-pub trait Subscriber: Serialize + for<'de> Deserialize<'de> {
+pub trait Subscriber {
     /// Indicate whether subscriber is enabled given some [`Metadata`].
     fn enabled(&self, metadata: &Metadata) -> bool;
 
@@ -125,34 +125,64 @@ impl error::Error for SubscriberAlreadyExistsError {}
 /// Initializes a global subscriber in its own process.
 ///
 /// Only one global subscriber may exist, and calling this function multiple times will return an error.
-pub fn init_subscriber(
-    subscriber: impl Subscriber,
-) -> Result<SubscriberProcess, SubscriberAlreadyExistsError> {
+pub fn init_subscriber<S>(subscriber: S) -> Result<SubscriberProcess, SubscriberAlreadyExistsError>
+where
+    S: Subscriber + Serialize + for<'de> Deserialize<'de>,
+{
     if SUBSCRIBER.get().is_some() {
         return Err(SubscriberAlreadyExistsError);
     }
-    let max_level = subscriber.max_level_hint().unwrap_or(LevelFilter::TRACE);
     let process = spawn_subscriber(subscriber);
     process.register(SUBSCRIBER_NAME);
     SUBSCRIBER.set(process);
-    LevelFilter::set_max(max_level);
     Ok(process)
 }
 
-/// Spawns a subscriber in its own process.
-pub fn spawn_subscriber(subscriber: impl Subscriber) -> SubscriberProcess {
+/// Initializes a global subscriber in its own process using a subscriber factory function.
+/// This is useful if a subscriber is not serializable.
+///
+/// Only one global subscriber may exist, and calling this function multiple times will return an error.
+pub fn init_subscriber_fn<S>(
+    subscriber: fn() -> S,
+) -> Result<SubscriberProcess, SubscriberAlreadyExistsError>
+where
+    S: Subscriber,
+{
+    if SUBSCRIBER.get().is_some() {
+        return Err(SubscriberAlreadyExistsError);
+    }
+    let process = spawn_subscriber_fn(subscriber);
+    process.register(SUBSCRIBER_NAME);
+    SUBSCRIBER.set(process);
+    Ok(process)
+}
+
+/// Spawns a subscriber in its own process from a serializable subscriber.
+pub fn spawn_subscriber<S>(subscriber: S) -> SubscriberProcess
+where
+    S: Subscriber + Serialize + for<'de> Deserialize<'de>,
+{
     spawn!(
         |subscriber, mailbox: Mailbox<SubscriberMessage, serializer::Json>| {
             loop {
-                let message = mailbox.receive();
-                match message {
-                    SubscriberMessage::Event(event) => {
-                        if subscriber.enabled(&event.metadata) {
-                            subscriber.event(&event);
-                        }
-                    }
-                    SubscriberMessage::MaxLevelHint(req) => req.reply(subscriber.max_level_hint()),
-                }
+                handle_message(&subscriber, mailbox.receive());
+            }
+        }
+    )
+}
+
+/// Spawns a subscriber in its own process from a subscriber factory function.
+/// This is useful if a subscriber is not serializable.
+pub fn spawn_subscriber_fn<S>(subscriber: fn() -> S) -> SubscriberProcess
+where
+    S: Subscriber,
+{
+    let subscriber_fn = FuncRef::new(subscriber);
+    spawn!(
+        |subscriber_fn, mailbox: Mailbox<SubscriberMessage, serializer::Json>| {
+            let subscriber = subscriber_fn();
+            loop {
+                handle_message(&subscriber, mailbox.receive());
             }
         }
     )
@@ -162,5 +192,16 @@ pub fn spawn_subscriber(subscriber: impl Subscriber) -> SubscriberProcess {
 pub fn dispatch(event: Event) {
     if let Some(subscriber) = SUBSCRIBER.get() {
         subscriber.send(SubscriberMessage::Event(event));
+    }
+}
+
+fn handle_message(subscriber: &impl Subscriber, message: SubscriberMessage) {
+    match message {
+        SubscriberMessage::Event(event) => {
+            if subscriber.enabled(&event.metadata) {
+                subscriber.event(&event);
+            }
+        }
+        SubscriberMessage::MaxLevelHint(req) => req.reply(subscriber.max_level_hint()),
     }
 }
