@@ -6,6 +6,7 @@
 #[cfg(feature = "fmt")]
 pub mod fmt;
 pub mod multiple;
+pub mod opentelemetry;
 
 use std::error;
 
