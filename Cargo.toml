@@ -9,10 +9,37 @@ license = "Apache-2.0/MIT"
 readme = "Readme.md"
 
 [dependencies]
-chrono = "0.4"
-lunatic = "0.12"
-serde = { version = "1.0", features = ["derive"] }
-yansi = "0.5.1"
+cfg-if = "1.0.0"
+lunatic = { version = "0.12.1", features = ["json_serializer"] }
+lunatic-cached-process = "0.2.2"
+lunatic-message-request = "0.1.1"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.94"
+opentelemetry = { path = "../../tqwewe/opentelemetry-rust/opentelemetry" } # "0.18.0"
+opentelemetry-jaeger = { path = "../../tqwewe/opentelemetry-rust/opentelemetry-jaeger", features = [
+  "collector_client",
+] } # "0.11.0"
+
+ansi_term = { version = "0.12.1", optional = true }
+chrono = { version = "0.4.23", optional = true }
+
+[features]
+default = ["fmt"]
+fmt = ["ansi_term", "chrono"]
+
+max_level_off = []
+max_level_error = []
+max_level_warn = []
+max_level_info = []
+max_level_debug = []
+max_level_trace = []
+
+release_max_level_off = []
+release_max_level_error = []
+release_max_level_warn = []
+release_max_level_info = []
+release_max_level_debug = []
+release_max_level_trace = []
 
 [package.metadata.docs.rs]
 targets = ["wasm32-wasi"]
