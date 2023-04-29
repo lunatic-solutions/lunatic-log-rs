@@ -2,7 +2,7 @@ use lunatic_log::{info, subscriber::fmt::FmtSubscriber, LevelFilter};
 
 fn main() {
     // Initialize subscriber
-    lunatic_log::init(FmtSubscriber::new(LevelFilter::Info));
+    FmtSubscriber::new(LevelFilter::INFO).init();
 
     // Log message
     info!("Hello, {}", "World");

@@ -5,13 +5,11 @@ use lunatic_log::{
 };
 
 fn main() {
-    // Setup multiple subscribers
-    let subscriber = MultipleSubscribers::new()
-        .add_subscriber(FmtSubscriber::new(LevelFilter::Info))
-        .add_subscriber(FmtSubscriber::new(LevelFilter::Info));
-
     // Initialize multiple subscribers
-    lunatic_log::init(subscriber);
+    MultipleSubscribers::new()
+        .add_subscriber(FmtSubscriber::new(LevelFilter::INFO))
+        .add_subscriber(FmtSubscriber::new(LevelFilter::INFO))
+        .init();
 
     // Log message
     info!("Hello, {}", "World");

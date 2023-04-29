@@ -2,7 +2,7 @@ use lunatic_log::{debug, error, info, subscriber::fmt::FmtSubscriber, trace, war
 
 fn main() {
     // Initialize subscriber
-    lunatic_log::init(FmtSubscriber::new(LevelFilter::Trace).pretty());
+    FmtSubscriber::new(LevelFilter::TRACE).pretty().init();
 
     // Log message
     error!("Error");

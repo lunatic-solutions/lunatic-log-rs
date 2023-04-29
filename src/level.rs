@@ -1,372 +1,318 @@
-use std::{cmp, error, fmt, str::FromStr};
+//! Trace verbosity level filtering.
 
+mod filter;
+
+use std::{cmp, fmt, str};
+
+pub use filter::*;
 use serde::{Deserialize, Serialize};
 
-static LOG_LEVEL_NAMES: [&str; 6] = ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
-
-static LEVEL_PARSE_ERROR: &str =
-    "attempted to convert a string that doesn't match an existing log level";
-
-/// An enum representing the available verbosity levels of the logger.
+/// Describes the level of verbosity of a span or event.
 ///
-/// Typical usage includes: checking if a certain `Level` is enabled with
-/// [`log!`](super::log), and comparing a [`Level`] directly to a
-/// [`LevelFilter`](LevelFilter).
-#[repr(usize)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
-pub enum Level {
+/// # Comparing Levels
+///
+/// `Level` implements the [`PartialOrd`] and [`Ord`] traits, allowing two
+/// `Level`s to be compared to determine which is considered more or less
+/// verbose. Levels which are more verbose are considered "greater than" levels
+/// which are less verbose, with [`Level::ERROR`] considered the lowest, and
+/// [`Level::TRACE`] considered the highest.
+///
+/// For example:
+/// ```
+/// use tracing_core::Level;
+///
+/// assert!(Level::TRACE > Level::DEBUG);
+/// assert!(Level::ERROR < Level::WARN);
+/// assert!(Level::INFO <= Level::DEBUG);
+/// assert_eq!(Level::TRACE, Level::TRACE);
+/// ```
+///
+/// # Filtering
+///
+/// `Level`s are typically used to implement filtering that determines which
+/// spans and events are enabled. Depending on the use case, more or less
+/// verbose diagnostics may be desired. For example, when running in
+/// development, [`DEBUG`]-level traces may be enabled by default. When running in
+/// production, only [`INFO`]-level and lower traces might be enabled. Libraries
+/// may include very verbose diagnostics at the [`DEBUG`] and/or [`TRACE`] levels.
+/// Applications using those libraries typically chose to ignore those traces. However, when
+/// debugging an issue involving said libraries, it may be useful to temporarily
+/// enable the more verbose traces.
+///
+/// The [`LevelFilter`] type is provided to enable filtering traces by
+/// verbosity. `Level`s can be compared against [`LevelFilter`]s, and
+/// [`LevelFilter`] has a variant for each `Level`, which compares analogously
+/// to that level. In addition, [`LevelFilter`] adds a [`LevelFilter::OFF`]
+/// variant, which is considered "less verbose" than every other `Level`. This is
+/// intended to allow filters to completely disable tracing in a particular context.
+///
+/// For example:
+/// ```
+/// use tracing_core::{Level, LevelFilter};
+///
+/// assert!(LevelFilter::OFF < Level::TRACE);
+/// assert!(LevelFilter::TRACE > Level::DEBUG);
+/// assert!(LevelFilter::ERROR < Level::WARN);
+/// assert!(LevelFilter::INFO <= Level::DEBUG);
+/// assert!(LevelFilter::INFO >= Level::INFO);
+/// ```
+///
+/// ## Examples
+///
+/// Below is a simple example of how a [collector] could implement filtering through
+/// a [`LevelFilter`]. When a span or event is recorded, the [`Collect::enabled`] method
+/// compares the span or event's `Level` against the configured [`LevelFilter`].
+/// The optional [`Collect::max_level_hint`] method can also be implemented to  allow spans
+/// and events above a maximum verbosity level to be skipped more efficiently,
+/// often improving performance in short-lived programs.
+///
+/// ```
+/// use tracing_core::{span, Event, Level, LevelFilter, Collect, Metadata};
+/// # use tracing_core::span::{Id, Record, Current};
+///
+/// #[derive(Debug)]
+/// pub struct MyCollector {
+///     /// The most verbose level that this collector will enable.
+///     max_level: LevelFilter,
+///
+///     // ...
+/// }
+///
+/// impl MyCollector {
+///     /// Returns a new `MyCollector` which will record spans and events up to
+///     /// `max_level`.
+///     pub fn with_max_level(max_level: LevelFilter) -> Self {
+///         Self {
+///             max_level,
+///             // ...
+///         }
+///     }
+/// }
+/// impl Collect for MyCollector {
+///     fn enabled(&self, meta: &Metadata<'_>) -> bool {
+///         // A span or event is enabled if it is at or below the configured
+///         // maximum level.
+///         meta.level() <= &self.max_level
+///     }
+///
+///     // This optional method returns the most verbose level that this
+///     // collector will enable. Although implementing this method is not
+///     // *required*, it permits additional optimizations when it is provided,
+///     // allowing spans and events above the max level to be skipped
+///     // more efficiently.
+///     fn max_level_hint(&self) -> Option<LevelFilter> {
+///         Some(self.max_level)
+///     }
+///
+///     // Implement the rest of the collector...
+///     fn new_span(&self, span: &span::Attributes<'_>) -> span::Id {
+///         // ...
+///         # drop(span); Id::from_u64(1)
+///     }
+
+///     fn event(&self, event: &Event<'_>) {
+///         // ...
+///         # drop(event);
+///     }
+///
+///     // ...
+///     # fn enter(&self, _: &Id) {}
+///     # fn exit(&self, _: &Id) {}
+///     # fn record(&self, _: &Id, _: &Record<'_>) {}
+///     # fn record_follows_from(&self, _: &Id, _: &Id) {}
+///     # fn current_span(&self) -> Current { Current::unknown() }
+/// }
+/// ```
+///
+/// It is worth noting that the `tracing-subscriber` crate provides [additional
+/// APIs][envfilter] for performing more sophisticated filtering, such as
+/// enabling different levels based on which module or crate a span or event is
+/// recorded in.
+///
+/// [`DEBUG`]: Level::DEBUG
+/// [`INFO`]: Level::INFO
+/// [`TRACE`]: Level::TRACE
+/// [`Collect::enabled`]: crate::collect::Collect::enabled
+/// [`Collect::max_level_hint`]: crate::collect::Collect::max_level_hint
+/// [collector]: crate::collect::Collect
+/// [envfilter]: https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Level(LevelInner);
+
+impl Level {
     /// The "error" level.
     ///
     /// Designates very serious errors.
-    // This way these line up with the discriminants for [LevelFilter] below
-    // This works because Rust treats field-less enums the same way as C does:
-    // https://doc.rust-lang.org/reference/items/enumerations.html#custom-discriminant-values-for-field-less-enumerations
-    Error = 1,
+    pub const ERROR: Level = Level(LevelInner::Error);
     /// The "warn" level.
     ///
     /// Designates hazardous situations.
-    Warn,
+    pub const WARN: Level = Level(LevelInner::Warn);
     /// The "info" level.
     ///
     /// Designates useful information.
-    Info,
+    pub const INFO: Level = Level(LevelInner::Info);
     /// The "debug" level.
     ///
     /// Designates lower priority information.
-    Debug,
+    pub const DEBUG: Level = Level(LevelInner::Debug);
     /// The "trace" level.
     ///
     /// Designates very low priority, often extremely verbose, information.
-    Trace,
-}
+    pub const TRACE: Level = Level(LevelInner::Trace);
 
-impl PartialEq<LevelFilter> for Level {
-    #[inline]
-    fn eq(&self, other: &LevelFilter) -> bool {
-        *self as usize == *other as usize
-    }
-}
-
-impl PartialOrd for Level {
-    #[inline]
-    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-
-    #[inline]
-    fn lt(&self, other: &Level) -> bool {
-        (*self as usize) < *other as usize
-    }
-
-    #[inline]
-    fn le(&self, other: &Level) -> bool {
-        *self as usize <= *other as usize
-    }
-
-    #[inline]
-    fn gt(&self, other: &Level) -> bool {
-        *self as usize > *other as usize
-    }
-
-    #[inline]
-    fn ge(&self, other: &Level) -> bool {
-        *self as usize >= *other as usize
-    }
-}
-
-impl PartialOrd<LevelFilter> for Level {
-    #[inline]
-    fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
-        Some((*self as usize).cmp(&(*other as usize)))
-    }
-
-    #[inline]
-    fn lt(&self, other: &LevelFilter) -> bool {
-        (*self as usize) < *other as usize
-    }
-
-    #[inline]
-    fn le(&self, other: &LevelFilter) -> bool {
-        *self as usize <= *other as usize
-    }
-
-    #[inline]
-    fn gt(&self, other: &LevelFilter) -> bool {
-        *self as usize > *other as usize
-    }
-
-    #[inline]
-    fn ge(&self, other: &LevelFilter) -> bool {
-        *self as usize >= *other as usize
-    }
-}
-
-impl Ord for Level {
-    #[inline]
-    fn cmp(&self, other: &Level) -> cmp::Ordering {
-        (*self as usize).cmp(&(*other as usize))
-    }
-}
-
-// Reimplemented here because std::ascii is not available in libcore
-fn eq_ignore_ascii_case(a: &str, b: &str) -> bool {
-    fn to_ascii_uppercase(c: u8) -> u8 {
-        if (b'a'..=b'z').contains(&c) {
-            c - b'a' + b'A'
-        } else {
-            c
+    /// Returns the string representation of the `Level`.
+    ///
+    /// This returns the same string as the `fmt::Display` implementation.
+    pub fn as_str(&self) -> &'static str {
+        match *self {
+            Level::TRACE => "TRACE",
+            Level::DEBUG => "DEBUG",
+            Level::INFO => "INFO",
+            Level::WARN => "WARN",
+            Level::ERROR => "ERROR",
         }
-    }
-
-    if a.len() == b.len() {
-        a.bytes()
-            .zip(b.bytes())
-            .all(|(a, b)| to_ascii_uppercase(a) == to_ascii_uppercase(b))
-    } else {
-        false
-    }
-}
-
-impl FromStr for Level {
-    type Err = ParseLevelError;
-    fn from_str(level: &str) -> Result<Level, Self::Err> {
-        LOG_LEVEL_NAMES
-            .iter()
-            .position(|&name| eq_ignore_ascii_case(name, level))
-            .into_iter()
-            .filter(|&idx| idx != 0)
-            .map(|idx| Level::from_usize(idx).unwrap())
-            .next()
-            .ok_or(ParseLevelError(()))
     }
 }
 
 impl fmt::Display for Level {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.pad(self.as_str())
-    }
-}
-
-impl Level {
-    fn from_usize(u: usize) -> Option<Level> {
-        match u {
-            1 => Some(Level::Error),
-            2 => Some(Level::Warn),
-            3 => Some(Level::Info),
-            4 => Some(Level::Debug),
-            5 => Some(Level::Trace),
-            _ => None,
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Level::TRACE => f.pad("TRACE"),
+            Level::DEBUG => f.pad("DEBUG"),
+            Level::INFO => f.pad("INFO"),
+            Level::WARN => f.pad("WARN"),
+            Level::ERROR => f.pad("ERROR"),
         }
     }
+}
 
-    /// Returns the most verbose logging level.
-    #[inline]
-    pub fn max() -> Level {
-        Level::Trace
-    }
+impl std::error::Error for ParseLevelError {}
 
-    /// Converts the [`Level`] to the equivalent [`LevelFilter`].
-    #[inline]
-    pub fn to_level_filter(&self) -> LevelFilter {
-        LevelFilter::from_usize(*self as usize).unwrap()
-    }
-
-    /// Returns the string representation of the [`Level`].
-    ///
-    /// This returns the same string as the [`fmt::Display`] implementation.
-    pub fn as_str(&self) -> &'static str {
-        LOG_LEVEL_NAMES[*self as usize]
-    }
-
-    /// Iterate through all supported logging levels.
-    ///
-    /// The order of iteration is from more severe to less severe log messages.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use lunatic_log::Level;
-    ///
-    /// let mut levels = Level::iter();
-    ///
-    /// assert_eq!(Some(Level::Error), levels.next());
-    /// assert_eq!(Some(Level::Trace), levels.last());
-    /// ```
-    pub fn iter() -> impl Iterator<Item = Self> {
-        (1..6).map(|i| Self::from_usize(i).unwrap())
+impl str::FromStr for Level {
+    type Err = ParseLevelError;
+    fn from_str(s: &str) -> Result<Self, ParseLevelError> {
+        s.parse::<usize>()
+            .map_err(|_| ParseLevelError { _p: () })
+            .and_then(|num| match num {
+                1 => Ok(Level::ERROR),
+                2 => Ok(Level::WARN),
+                3 => Ok(Level::INFO),
+                4 => Ok(Level::DEBUG),
+                5 => Ok(Level::TRACE),
+                _ => Err(ParseLevelError { _p: () }),
+            })
+            .or_else(|_| match s {
+                s if s.eq_ignore_ascii_case("error") => Ok(Level::ERROR),
+                s if s.eq_ignore_ascii_case("warn") => Ok(Level::WARN),
+                s if s.eq_ignore_ascii_case("info") => Ok(Level::INFO),
+                s if s.eq_ignore_ascii_case("debug") => Ok(Level::DEBUG),
+                s if s.eq_ignore_ascii_case("trace") => Ok(Level::TRACE),
+                _ => Err(ParseLevelError { _p: () }),
+            })
     }
 }
 
-/// An enum representing the available verbosity level filters of the logger.
-///
-/// A [`LevelFilter`] may be compared directly to a [`Level`].
 #[repr(usize)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize, Deserialize)]
-pub enum LevelFilter {
-    /// A level lower than all log levels.
-    Off,
-    /// Corresponds to the `Error` log level.
-    Error,
-    /// Corresponds to the `Warn` log level.
-    Warn,
-    /// Corresponds to the `Info` log level.
-    Info,
-    /// Corresponds to the `Debug` log level.
-    Debug,
-    /// Corresponds to the `Trace` log level.
-    Trace,
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+enum LevelInner {
+    /// The "trace" level.
+    ///
+    /// Designates very low priority, often extremely verbose, information.
+    Trace = 0,
+    /// The "debug" level.
+    ///
+    /// Designates lower priority information.
+    Debug = 1,
+    /// The "info" level.
+    ///
+    /// Designates useful information.
+    Info = 2,
+    /// The "warn" level.
+    ///
+    /// Designates hazardous situations.
+    Warn = 3,
+    /// The "error" level.
+    ///
+    /// Designates very serious errors.
+    Error = 4,
 }
 
-impl PartialEq<Level> for LevelFilter {
-    #[inline]
-    fn eq(&self, other: &Level) -> bool {
-        other.eq(self)
+/// Returned if parsing a `Level` fails.
+#[derive(Debug)]
+pub struct ParseLevelError {
+    _p: (),
+}
+
+impl fmt::Display for ParseLevelError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(
+            "error parsing level: expected one of \"error\", \"warn\", \
+             \"info\", \"debug\", \"trace\", or a number 1-5",
+        )
     }
 }
 
-impl PartialOrd for LevelFilter {
-    #[inline]
-    fn partial_cmp(&self, other: &LevelFilter) -> Option<cmp::Ordering> {
+impl PartialOrd for Level {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
-    fn lt(&self, other: &LevelFilter) -> bool {
-        (*self as usize) < *other as usize
-    }
-
-    #[inline]
-    fn le(&self, other: &LevelFilter) -> bool {
-        *self as usize <= *other as usize
-    }
-
-    #[inline]
-    fn gt(&self, other: &LevelFilter) -> bool {
-        *self as usize > *other as usize
-    }
-
-    #[inline]
-    fn ge(&self, other: &LevelFilter) -> bool {
-        *self as usize >= *other as usize
-    }
-}
-
-impl PartialOrd<Level> for LevelFilter {
-    #[inline]
-    fn partial_cmp(&self, other: &Level) -> Option<cmp::Ordering> {
-        Some((*self as usize).cmp(&(*other as usize)))
-    }
-
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &Level) -> bool {
-        (*self as usize) < *other as usize
+        (other.0 as usize) < (self.0 as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &Level) -> bool {
-        *self as usize <= *other as usize
+        (other.0 as usize) <= (self.0 as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &Level) -> bool {
-        *self as usize > *other as usize
+        (other.0 as usize) > (self.0 as usize)
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &Level) -> bool {
-        *self as usize >= *other as usize
+        (other.0 as usize) >= (self.0 as usize)
     }
 }
 
-impl Ord for LevelFilter {
-    #[inline]
-    fn cmp(&self, other: &LevelFilter) -> cmp::Ordering {
-        (*self as usize).cmp(&(*other as usize))
+impl Ord for Level {
+    #[inline(always)]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        (other.0 as usize).cmp(&(self.0 as usize))
     }
 }
 
-impl FromStr for LevelFilter {
-    type Err = ParseLevelError;
-    fn from_str(level: &str) -> Result<LevelFilter, Self::Err> {
-        LOG_LEVEL_NAMES
-            .iter()
-            .position(|&name| eq_ignore_ascii_case(name, level))
-            .map(|p| LevelFilter::from_usize(p).unwrap())
-            .ok_or(ParseLevelError(()))
+impl Serialize for LevelInner {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_u8(*self as u8)
     }
 }
 
-impl fmt::Display for LevelFilter {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.pad(self.as_str())
-    }
-}
-
-impl LevelFilter {
-    fn from_usize(u: usize) -> Option<LevelFilter> {
-        match u {
-            0 => Some(LevelFilter::Off),
-            1 => Some(LevelFilter::Error),
-            2 => Some(LevelFilter::Warn),
-            3 => Some(LevelFilter::Info),
-            4 => Some(LevelFilter::Debug),
-            5 => Some(LevelFilter::Trace),
-            _ => None,
+impl<'de> Deserialize<'de> for LevelInner {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let level = u8::deserialize(deserializer)?;
+        match level {
+            0 => Ok(LevelInner::Trace),
+            1 => Ok(LevelInner::Trace),
+            2 => Ok(LevelInner::Trace),
+            3 => Ok(LevelInner::Trace),
+            4 => Ok(LevelInner::Trace),
+            n => Err(<D::Error as serde::de::Error>::invalid_value(
+                serde::de::Unexpected::Unsigned(n as u64),
+                &"number in range 0..=4",
+            )),
         }
     }
-
-    /// Returns the most verbose logging level filter.
-    #[inline]
-    pub fn max() -> LevelFilter {
-        LevelFilter::Trace
-    }
-
-    /// Converts `self` to the equivalent [`Level`].
-    ///
-    /// Returns [`None`] if `self` is [`LevelFilter::Off`].
-    #[inline]
-    pub fn to_level(&self) -> Option<Level> {
-        Level::from_usize(*self as usize)
-    }
-
-    /// Returns the string representation of the [`LevelFilter`].
-    ///
-    /// This returns the same string as the [`fmt::Display`] implementation.
-    pub fn as_str(&self) -> &'static str {
-        LOG_LEVEL_NAMES[*self as usize]
-    }
-
-    /// Iterate through all supported filtering levels.
-    ///
-    /// The order of iteration is from less to more verbose filtering.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use lunatic_log::LevelFilter;
-    ///
-    /// let mut levels = LevelFilter::iter();
-    ///
-    /// assert_eq!(Some(LevelFilter::Off), levels.next());
-    /// assert_eq!(Some(LevelFilter::Trace), levels.last());
-    /// ```
-    pub fn iter() -> impl Iterator<Item = Self> {
-        (0..6).map(|i| Self::from_usize(i).unwrap())
-    }
 }
-
-/// The type returned by [`from_str`] when the string doesn't match any of the log levels.
-///
-/// [`from_str`]: https://doc.rust-lang.org/std/str/trait.FromStr.html#tymethod.from_str
-#[allow(missing_copy_implementations)]
-#[derive(Debug, PartialEq)]
-pub struct ParseLevelError(());
-
-impl fmt::Display for ParseLevelError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(LEVEL_PARSE_ERROR)
-    }
-}
-
-// The Error trait is not available in libcore
-impl error::Error for ParseLevelError {}
