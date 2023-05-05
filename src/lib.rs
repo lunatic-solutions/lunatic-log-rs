@@ -25,6 +25,7 @@ pub mod subscriber;
 
 use std::cell::RefCell;
 
+use lunatic::ProcessName;
 use lunatic::{process_local, spawn_link, Process};
 use serde::{Deserialize, Serialize};
 use subscriber::Subscriber;
@@ -36,6 +37,9 @@ process_local! {
     static LOGGING_PROCESS: RefCell<LoggingProcess> = RefCell::new(LoggingProcess::NotLookedUp);
 }
 
+#[derive(ProcessName)]
+struct LoggingProcessID;
+
 enum LoggingProcess {
     NotLookedUp,
     NotPresent,
@@ -46,12 +50,12 @@ enum LoggingProcess {
 ///
 /// The subscriber is spawned in a [`lunatic::Process`] and receives log events.
 pub fn init(subscriber: impl Subscriber) -> Process<Event> {
-    if Process::<Event>::lookup("lunatic::logger").is_some() {
+    if Process::<Event>::lookup(&LoggingProcessID).is_some() {
         panic!("logger already initialized");
     }
 
     let process = spawn_subscriber(subscriber);
-    process.register("lunatic::logger");
+    process.register(&LoggingProcessID);
     LOGGING_PROCESS.with_borrow_mut(|mut proc| *proc = LoggingProcess::Present(process.clone()));
     process
 }
@@ -100,7 +104,7 @@ pub fn __lookup_logging_process() -> Option<Process<Event>> {
         match &*proc_ref {
             LoggingProcess::NotLookedUp => {
                 std::mem::drop(proc_ref);
-                match Process::<Event>::lookup("lunatic::logger") {
+                match Process::<Event>::lookup(&LoggingProcessID) {
                     Some(process) => {
                         *proc.borrow_mut() = LoggingProcess::Present(process.clone());
                         Some(process)
