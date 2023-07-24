@@ -10,7 +10,7 @@ readme = "Readme.md"
 
 [dependencies]
 chrono = "0.4"
-lunatic = "0.13"
+lunatic = "0.14"
 serde = { version = "1.0", features = ["derive"] }
 yansi = "0.5.1"
 
